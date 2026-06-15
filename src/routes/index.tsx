@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { MobileShell } from "@/components/MobileShell";
 import { useEmergency } from "@/lib/safepath-state";
-import { useEffect } from "@tanstack/react-router/ssr/client";
 import { ChevronRight, Timer, EyeOff, Activity, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/")({
