@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { MobileShell } from "@/components/MobileShell";
-import { ChevronRight, Vibrate, KeyRound, Volume2, EyeOff, Heart } from "lucide-react";
+import { ChevronRight, Vibrate, KeyRound, Volume2, EyeOff, Heart, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
