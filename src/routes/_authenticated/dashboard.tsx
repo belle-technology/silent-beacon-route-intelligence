@@ -5,7 +5,7 @@ import { formatElapsed, useEmergency } from "@/lib/safepath-state";
 import { AlertOctagon, Radio, ShieldAlert, Wifi, Activity, ArrowLeft } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/dashboard")({
+export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "SafePath AI — Operations dashboard" },

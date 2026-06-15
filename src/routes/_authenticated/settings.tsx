@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MobileShell } from "@/components/MobileShell";
 import { ChevronRight, Vibrate, KeyRound, Volume2, EyeOff, Heart } from "lucide-react";
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
       { title: "SafePath AI — Settings" },

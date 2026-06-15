@@ -5,7 +5,7 @@ import { TacticalMap } from "@/components/TacticalMap";
 import { formatElapsed, useEmergency } from "@/lib/safepath-state";
 import { ShieldOff, Sparkles, Phone, Wifi, BatteryMedium, Navigation } from "lucide-react";
 
-export const Route = createFileRoute("/emergency")({
+export const Route = createFileRoute("/_authenticated/emergency")({
   head: () => ({
     meta: [
       { title: "SafePath AI — Emergency active" },

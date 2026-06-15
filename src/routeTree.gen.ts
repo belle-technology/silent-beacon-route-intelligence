@@ -9,153 +9,172 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as MapRouteImport } from './routes/map'
-import { Route as EmergencyRouteImport } from './routes/emergency'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as ContactsRouteImport } from './routes/contacts'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
+import { Route as AuthenticatedMapRouteImport } from './routes/_authenticated/map'
+import { Route as AuthenticatedEmergencyRouteImport } from './routes/_authenticated/emergency'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MapRoute = MapRouteImport.update({
-  id: '/map',
-  path: '/map',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EmergencyRoute = EmergencyRouteImport.update({
-  id: '/emergency',
-  path: '/emergency',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContactsRoute = ContactsRouteImport.update({
-  id: '/contacts',
-  path: '/contacts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
+const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedMapRoute = AuthenticatedMapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedEmergencyRoute = AuthenticatedEmergencyRouteImport.update({
+  id: '/emergency',
+  path: '/emergency',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/contacts': typeof ContactsRoute
-  '/dashboard': typeof DashboardRoute
-  '/emergency': typeof EmergencyRoute
-  '/map': typeof MapRoute
-  '/settings': typeof SettingsRoute
+  '/': typeof AuthenticatedIndexRoute
+  '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/emergency': typeof AuthenticatedEmergencyRoute
+  '/map': typeof AuthenticatedMapRoute
+  '/settings': typeof AuthenticatedSettingsRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/contacts': typeof ContactsRoute
-  '/dashboard': typeof DashboardRoute
-  '/emergency': typeof EmergencyRoute
-  '/map': typeof MapRoute
-  '/settings': typeof SettingsRoute
+  '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/emergency': typeof AuthenticatedEmergencyRoute
+  '/map': typeof AuthenticatedMapRoute
+  '/settings': typeof AuthenticatedSettingsRoute
+  '/': typeof AuthenticatedIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/contacts': typeof ContactsRoute
-  '/dashboard': typeof DashboardRoute
-  '/emergency': typeof EmergencyRoute
-  '/map': typeof MapRoute
-  '/settings': typeof SettingsRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/emergency': typeof AuthenticatedEmergencyRoute
+  '/_authenticated/map': typeof AuthenticatedMapRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
+  '/_authenticated/': typeof AuthenticatedIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/contacts'
-    | '/dashboard'
-    | '/emergency'
-    | '/map'
-    | '/settings'
+  fullPaths: '/' | '/auth' | '/dashboard' | '/emergency' | '/map' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/contacts' | '/dashboard' | '/emergency' | '/map' | '/settings'
+  to: '/auth' | '/dashboard' | '/emergency' | '/map' | '/settings' | '/'
   id:
     | '__root__'
-    | '/'
-    | '/contacts'
-    | '/dashboard'
-    | '/emergency'
-    | '/map'
-    | '/settings'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/emergency'
+    | '/_authenticated/map'
+    | '/_authenticated/settings'
+    | '/_authenticated/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  ContactsRoute: typeof ContactsRoute
-  DashboardRoute: typeof DashboardRoute
-  EmergencyRoute: typeof EmergencyRoute
-  MapRoute: typeof MapRoute
-  SettingsRoute: typeof SettingsRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/map': {
-      id: '/map'
-      path: '/map'
-      fullPath: '/map'
-      preLoaderRoute: typeof MapRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/emergency': {
-      id: '/emergency'
-      path: '/emergency'
-      fullPath: '/emergency'
-      preLoaderRoute: typeof EmergencyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contacts': {
-      id: '/contacts'
-      path: '/contacts'
-      fullPath: '/contacts'
-      preLoaderRoute: typeof ContactsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
+    '/_authenticated/': {
+      id: '/_authenticated/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AuthenticatedIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/map': {
+      id: '/_authenticated/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof AuthenticatedMapRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/emergency': {
+      id: '/_authenticated/emergency'
+      path: '/emergency'
+      fullPath: '/emergency'
+      preLoaderRoute: typeof AuthenticatedEmergencyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedEmergencyRoute: typeof AuthenticatedEmergencyRoute
+  AuthenticatedMapRoute: typeof AuthenticatedMapRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
+  AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedEmergencyRoute: AuthenticatedEmergencyRoute,
+  AuthenticatedMapRoute: AuthenticatedMapRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
+  AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  ContactsRoute: ContactsRoute,
-  DashboardRoute: DashboardRoute,
-  EmergencyRoute: EmergencyRoute,
-  MapRoute: MapRoute,
-  SettingsRoute: SettingsRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

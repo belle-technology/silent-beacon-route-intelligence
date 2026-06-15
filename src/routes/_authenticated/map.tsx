@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { MobileShell } from "@/components/MobileShell";
 import { TacticalMap } from "@/components/TacticalMap";
 
-export const Route = createFileRoute("/map")({
+export const Route = createFileRoute("/_authenticated/map")({
   head: () => ({
     meta: [
       { title: "SafePath AI — Risk map" },
