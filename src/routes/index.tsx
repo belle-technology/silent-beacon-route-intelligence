@@ -18,11 +18,9 @@ function Standby() {
   const { state } = useEmergency();
   const navigate = useNavigate();
 
-  // If already in emergency, push to the emergency screen
-  if (typeof window !== "undefined" && state.active) {
-    // soft redirect on next tick
-    queueMicrotask(() => navigate({ to: "/emergency" }));
-  }
+  useEffect(() => {
+    if (state.active) navigate({ to: "/emergency" });
+  }, [state.active, navigate]);
 
   return (
     <MobileShell>
