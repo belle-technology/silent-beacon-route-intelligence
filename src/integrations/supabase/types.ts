@@ -14,7 +14,155 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      emergency_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          phone: string
+          priority: number
+          relation: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+          priority?: number
+          relation?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+          priority?: number
+          relation?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      incidents: {
+        Row: {
+          ended_at: string | null
+          id: string
+          last_heading: number | null
+          last_lat: number | null
+          last_lng: number | null
+          last_speed: number | null
+          notes: string | null
+          started_at: string
+          status: string
+          trigger_method: string | null
+          user_id: string
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          last_heading?: number | null
+          last_lat?: number | null
+          last_lng?: number | null
+          last_speed?: number | null
+          notes?: string | null
+          started_at?: string
+          status?: string
+          trigger_method?: string | null
+          user_id: string
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          last_heading?: number | null
+          last_lat?: number | null
+          last_lng?: number | null
+          last_speed?: number | null
+          notes?: string | null
+          started_at?: string
+          status?: string
+          trigger_method?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      location_pings: {
+        Row: {
+          accuracy: number | null
+          battery: number | null
+          created_at: string
+          heading: number | null
+          id: number
+          incident_id: string
+          lat: number
+          lng: number
+          speed: number | null
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          battery?: number | null
+          created_at?: string
+          heading?: number | null
+          id?: number
+          incident_id: string
+          lat: number
+          lng: number
+          speed?: number | null
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          battery?: number | null
+          created_at?: string
+          heading?: number | null
+          id?: number
+          incident_id?: string
+          lat?: number
+          lng?: number
+          speed?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_pings_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          home_label: string | null
+          id: string
+          phone: string | null
+          safe_pin: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          home_label?: string | null
+          id: string
+          phone?: string | null
+          safe_pin?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          home_label?: string | null
+          id?: string
+          phone?: string | null
+          safe_pin?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
