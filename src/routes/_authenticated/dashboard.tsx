@@ -1,9 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { TacticalMap } from "@/components/TacticalMap";
-import { formatElapsed, useEmergency } from "@/lib/safepath-state";
-import { AlertOctagon, Radio, ShieldAlert, Wifi, Activity, ArrowLeft } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { formatElapsed, useActiveIncidents, useIncidentPings, type Incident } from "@/lib/safepath-state";
+import { AlertOctagon, Radio, ShieldAlert, Wifi, Activity, ArrowLeft, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -15,18 +14,14 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-const TIMELINE = [
-  { t: "20:03", text: "Emergency activated (volume long-hold)", tone: "alert" },
-  { t: "20:04", text: "Location captured · 6°27′14″N 3°23′52″E", tone: "white" },
-  { t: "20:06", text: "Movement detected · 12 → 45 km/h", tone: "white" },
-  { t: "20:10", text: "Entered rural road", tone: "amber" },
-  { t: "20:14", text: "Deviation from daily commute", tone: "amber" },
-  { t: "20:18", text: "Speed increased to 72 km/h", tone: "alert" },
-  { t: "20:22", text: "AI predicts probable destination corridor", tone: "alert" },
-];
-
 function Dashboard() {
-  const { state, trigger } = useEmergency();
+  const incidents = useActiveIncidents();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = useMemo(
+    () => incidents.find((i) => i.id === selectedId) ?? incidents[0] ?? null,
+    [incidents, selectedId],
+  );
+  const pings = useIncidentPings(selected?.id ?? null);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -34,7 +29,7 @@ function Dashboard() {
     return () => clearInterval(id);
   }, []);
 
-  const elapsed = state.active ? formatElapsed(state.startedAt, now) : "—";
+  const elapsed = selected ? formatElapsed(new Date(selected.started_at).getTime(), now) : "—";
 
   return (
     <div className="min-h-screen bg-bg-deep text-white">
@@ -55,7 +50,7 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3 text-[11px] font-mono text-white/55">
-            <span className="hidden md:flex items-center gap-1.5"><Wifi className="size-3" /> 4 feeds online</span>
+            <span className="hidden md:flex items-center gap-1.5"><Wifi className="size-3" /> Realtime feed</span>
             <span className="size-2 rounded-full bg-safe animate-pulse" />
             <span>OPS-NODE-01</span>
           </div>
@@ -63,27 +58,29 @@ function Dashboard() {
       </header>
 
       <div className="max-w-[1400px] mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Active incident header */}
+        {/* Active incident list */}
         <div className="lg:col-span-3 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-alert flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-alert animate-pulse" />
-              Active incident
+              <span className={`size-1.5 rounded-full ${incidents.length ? "bg-alert animate-pulse" : "bg-safe"}`} />
+              {incidents.length} active incident{incidents.length === 1 ? "" : "s"}
             </p>
             <h1 className="text-3xl font-bold tracking-tight mt-1">
-              INC-77492 · <span className="text-white/70">Adebola Okafor</span>
+              {selected ? <>INC-{selected.id.slice(0, 8).toUpperCase()}</> : "All clear"}
             </h1>
             <p className="text-xs text-white/50 mt-1 font-mono">
-              Elapsed {elapsed} · Distress level 4 · Trigger: {state.triggerMethod ?? "volume-long-hold"}
+              {selected ? <>Elapsed {elapsed} · trigger: {selected.trigger_method ?? "manual"}</> : "No active distress signals."}
             </p>
           </div>
-          {!state.active && (
-            <button
-              onClick={() => trigger("ops-simulate")}
-              className="px-4 py-2 rounded-xl bg-alert/10 border border-alert/40 text-alert text-[11px] font-bold uppercase tracking-widest hover:bg-alert/20 transition"
-            >
-              Simulate incident
-            </button>
+          {incidents.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto">
+              {incidents.map((i) => (
+                <button key={i.id} onClick={() => setSelectedId(i.id)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-wider border ${selected?.id === i.id ? "bg-alert/15 border-alert/40 text-alert" : "bg-white/[0.04] border-hairline text-white/55"}`}>
+                  INC-{i.id.slice(0, 6).toUpperCase()}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
@@ -95,30 +92,24 @@ function Dashboard() {
               <h2 className="text-sm font-semibold">Live route + predicted corridors</h2>
             </div>
             <div className="flex items-center gap-3 text-[10px] font-mono text-white/45">
-              <Legend dot="bg-alert" label="82% likely" />
-              <Legend dot="bg-amber" label="14%" />
-              <Legend dot="bg-safe" label="historic safe" />
+              <Legend dot="bg-alert" label="active" />
+              <Legend dot="bg-amber" label="predicted" />
+              <span>{pings.length} pings</span>
             </div>
           </div>
           <TacticalMap className="h-[420px] rounded-none border-0" />
           <div className="grid grid-cols-3 gap-px bg-hairline">
-            {[
-              { l: "Coordinates", v: "6°27′14″N · 3°23′52″E" },
-              { l: "Speed", v: "72 km/h NW" },
-              { l: "Vehicle", v: "Likely SUV" },
-            ].map((s) => (
-              <div key={s.l} className="bg-surface/60 p-4">
-                <p className="text-[10px] uppercase tracking-widest text-white/40 font-mono">{s.l}</p>
-                <p className="text-sm font-semibold font-mono mt-1">{s.v}</p>
-              </div>
-            ))}
+            <Stat l="Coordinates" v={selected?.last_lat != null && selected.last_lng != null
+              ? `${selected.last_lat.toFixed(4)}, ${selected.last_lng.toFixed(4)}` : "—"} />
+            <Stat l="Speed" v={selected?.last_speed != null ? `${(selected.last_speed * 3.6).toFixed(0)} km/h` : "—"} />
+            <Stat l="Heading" v={selected?.last_heading != null ? `${selected.last_heading.toFixed(0)}°` : "—"} />
           </div>
         </div>
 
         {/* Prediction + actions */}
         <div className="rounded-3xl bg-surface/40 border border-hairline p-5 flex flex-col gap-5">
           <div>
-            <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-3">Route prediction</p>
+            <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-3">AI route prediction</p>
             <div className="space-y-3">
               <Prediction label="Birnin Gwari forest" pct={82} tone="alert" est="ETA 41 min" />
               <Prediction label="Rural Kaduna corridor" pct={14} tone="amber" est="ETA 28 min" />
@@ -130,7 +121,7 @@ function Dashboard() {
             <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-3">Recommended response</p>
             <div className="rounded-2xl bg-alert/8 border border-alert/25 p-4">
               <p className="text-xs text-white/85 leading-relaxed">
-                Deploy QRT Bravo to <span className="text-alert font-semibold">Interception point #4</span> on the Birnin Gwari approach. Notify forest checkpoint.
+                Deploy QRT Bravo to <span className="text-alert font-semibold">Interception point #4</span> on the Birnin Gwari approach.
               </p>
               <div className="mt-3 flex gap-2">
                 <button className="flex-1 py-2.5 rounded-xl bg-alert text-white text-[11px] font-bold uppercase tracking-widest hover:bg-alert/90 transition">
@@ -146,7 +137,7 @@ function Dashboard() {
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-3">Notified assets</p>
             <div className="flex flex-wrap gap-2">
-              {["HQ_DISPATCH", "LOC_POLICE", "QRT_BRAVO", "FAMILY_3"].map((a) => (
+              {["HQ_DISPATCH", "LOC_POLICE", "QRT_BRAVO", "FAMILY"].map((a) => (
                 <span key={a} className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-safe-soft border border-safe/25 text-safe">
                   {a}
                 </span>
@@ -155,56 +146,51 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Timeline */}
+        {/* Live ping timeline */}
         <div className="lg:col-span-2 rounded-3xl bg-surface/40 border border-hairline p-5">
           <div className="flex items-center gap-2 mb-4">
             <Activity className="size-4 text-amber" />
-            <h2 className="text-sm font-semibold">Incident timeline</h2>
+            <h2 className="text-sm font-semibold">Live ping stream</h2>
+            <span className="text-[10px] font-mono text-white/40 ml-2">{pings.length} captured</span>
           </div>
-          <div className="space-y-4 border-l border-hairline ml-2 pl-5 relative">
-            {TIMELINE.map((e, i) => (
-              <div key={i} className="relative">
-                <div
-                  className={`absolute -left-[26px] top-1 size-2.5 rounded-full ring-4 ring-bg-deep ${
-                    e.tone === "alert" ? "bg-alert" : e.tone === "amber" ? "bg-amber" : "bg-white/40"
-                  }`}
-                />
-                <div className="flex items-baseline justify-between">
-                  <p className="text-xs text-white/85">{e.text}</p>
-                  <p className="text-[10px] font-mono text-white/35 ml-3">{e.t}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Hotspots */}
-        <div className="rounded-3xl bg-surface/40 border border-hairline p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <AlertOctagon className="size-4 text-alert" />
-            <h2 className="text-sm font-semibold">Regional hotspots</h2>
-          </div>
-          <div className="space-y-2.5">
-            {[
-              { n: "Birnin Gwari forest", t: "alert", l: "SEVERE", w: 100 },
-              { n: "Abuja–Kaduna Expressway", t: "alert", l: "SEVERE", w: 95 },
-              { n: "Rural Kaduna corridor", t: "amber", l: "HIGH", w: 65 },
-              { n: "Central district", t: "safe", l: "CLEAR", w: 18 },
-            ].map((z) => {
-              const text = z.t === "alert" ? "text-alert" : z.t === "amber" ? "text-amber" : "text-safe";
-              const bg = z.t === "alert" ? "bg-alert" : z.t === "amber" ? "bg-amber" : "bg-safe";
-              return (
-                <div key={z.n} className="flex items-center justify-between text-xs p-3 rounded-xl bg-white/[0.03] border border-hairline">
-                  <span className="text-white/85">{z.n}</span>
-                  <div className="flex items-center gap-2.5">
-                    <div className="h-1 w-12 bg-white/5 rounded-full overflow-hidden">
-                      <div className={`h-full ${bg}`} style={{ width: `${z.w}%` }} />
-                    </div>
-                    <span className={`text-[10px] font-mono font-bold ${text}`}>{z.l}</span>
+          {pings.length === 0 ? (
+            <p className="text-[11px] font-mono text-white/40 py-8 text-center">Waiting for telemetry…</p>
+          ) : (
+            <div className="space-y-3 border-l border-hairline ml-2 pl-5 relative max-h-[420px] overflow-y-auto">
+              {pings.slice().reverse().slice(0, 50).map((p, i) => (
+                <div key={p.id} className="relative">
+                  <div className={`absolute -left-[26px] top-1 size-2.5 rounded-full ring-4 ring-bg-deep ${i === 0 ? "bg-alert animate-pulse" : "bg-white/40"}`} />
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-xs text-white/85 font-mono">{p.lat.toFixed(5)}, {p.lng.toFixed(5)} {p.speed != null && `· ${(p.speed * 3.6).toFixed(0)} km/h`}</p>
+                    <p className="text-[10px] font-mono text-white/35">{new Date(p.created_at).toLocaleTimeString()}</p>
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* All incidents */}
+        <div className="rounded-3xl bg-surface/40 border border-hairline p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="size-4 text-amber" />
+            <h2 className="text-sm font-semibold">Active subjects</h2>
+          </div>
+          {incidents.length === 0 ? (
+            <p className="text-[11px] font-mono text-white/40">No active incidents.</p>
+          ) : (
+            <div className="space-y-2.5">
+              {incidents.map((i) => <IncidentRow key={i.id} inc={i} selected={selected?.id === i.id} onClick={() => setSelectedId(i.id)} now={now} />)}
+            </div>
+          )}
+          <div className="mt-5">
+            <h3 className="text-[10px] font-mono uppercase tracking-widest text-white/40 mb-2 flex items-center gap-1"><AlertOctagon className="size-3" /> Regional hotspots</h3>
+            <div className="space-y-2 text-xs">
+              <Zone n="Birnin Gwari" l="SEVERE" t="alert" w={100} />
+              <Zone n="Abuja–Kaduna Expy" l="SEVERE" t="alert" w={95} />
+              <Zone n="Rural Kaduna" l="HIGH" t="amber" w={65} />
+              <Zone n="Central district" l="CLEAR" t="safe" w={18} />
+            </div>
           </div>
         </div>
       </div>
@@ -212,13 +198,30 @@ function Dashboard() {
   );
 }
 
-function Legend({ dot, label }: { dot: string; label: string }) {
+function IncidentRow({ inc, selected, onClick, now }: { inc: Incident; selected: boolean; onClick: () => void; now: number }) {
   return (
-    <span className="flex items-center gap-1.5">
-      <span className={`size-1.5 rounded-full ${dot}`} />
-      {label}
-    </span>
+    <button onClick={onClick}
+      className={`w-full text-left flex items-center justify-between p-3 rounded-xl border ${selected ? "bg-alert/10 border-alert/30" : "bg-white/[0.03] border-hairline"}`}>
+      <div>
+        <p className="text-xs font-semibold">INC-{inc.id.slice(0, 8).toUpperCase()}</p>
+        <p className="text-[10px] font-mono text-white/45">{inc.trigger_method ?? "manual"}</p>
+      </div>
+      <span className="text-[10px] font-mono text-alert">{formatElapsed(new Date(inc.started_at).getTime(), now)}</span>
+    </button>
   );
+}
+
+function Stat({ l, v }: { l: string; v: string }) {
+  return (
+    <div className="bg-surface/60 p-4">
+      <p className="text-[10px] uppercase tracking-widest text-white/40 font-mono">{l}</p>
+      <p className="text-sm font-semibold font-mono mt-1">{v}</p>
+    </div>
+  );
+}
+
+function Legend({ dot, label }: { dot: string; label: string }) {
+  return <span className="flex items-center gap-1.5"><span className={`size-1.5 rounded-full ${dot}`} />{label}</span>;
 }
 
 function Prediction({ label, pct, tone, est }: { label: string; pct: number; tone: "alert" | "amber" | "white"; est: string }) {
@@ -226,14 +229,23 @@ function Prediction({ label, pct, tone, est }: { label: string; pct: number; ton
   const text = tone === "alert" ? "text-alert" : tone === "amber" ? "text-amber" : "text-white/60";
   return (
     <div>
-      <div className="flex justify-between text-xs">
-        <span className="text-white/90">{label}</span>
-        <span className={`font-mono ${text}`}>{pct}%</span>
-      </div>
-      <div className="h-1 w-full bg-white/5 mt-1.5 rounded-full overflow-hidden">
-        <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
-      </div>
+      <div className="flex justify-between text-xs"><span className="text-white/90">{label}</span><span className={`font-mono ${text}`}>{pct}%</span></div>
+      <div className="h-1 w-full bg-white/5 mt-1.5 rounded-full overflow-hidden"><div className={`h-full ${bar}`} style={{ width: `${pct}%` }} /></div>
       <p className="text-[10px] font-mono text-white/35 mt-1">{est}</p>
+    </div>
+  );
+}
+
+function Zone({ n, l, t, w }: { n: string; l: string; t: "alert" | "amber" | "safe"; w: number }) {
+  const text = t === "alert" ? "text-alert" : t === "amber" ? "text-amber" : "text-safe";
+  const bg = t === "alert" ? "bg-alert" : t === "amber" ? "bg-amber" : "bg-safe";
+  return (
+    <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.03] border border-hairline">
+      <span className="text-white/85">{n}</span>
+      <div className="flex items-center gap-2">
+        <div className="h-1 w-10 bg-white/5 rounded-full overflow-hidden"><div className={`h-full ${bg}`} style={{ width: `${w}%` }} /></div>
+        <span className={`text-[10px] font-mono font-bold ${text}`}>{l}</span>
+      </div>
     </div>
   );
 }
