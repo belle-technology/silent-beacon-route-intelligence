@@ -160,6 +160,5 @@ function Outlook({ name, tone, pct, label }: { name: string; tone: "alert" | "am
   );
 }
 
-// useEffect is normally from React — re-export shim above isn't needed
-// (unused import suppressor)
-void useEffect;
+
+
