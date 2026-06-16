@@ -110,7 +110,7 @@ function appendPing(
 export function useEmergency() {
   const [userId] = useState<string | null>(LOCAL_USER_ID);
   const [incident, setIncident] = useState<Incident | null>(null);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const watchIdRef = useRef<number | null>(null);
   const fallbackIntervalRef = useRef<number | null>(null);
   const ownsStreamRef = useRef(false);
@@ -118,7 +118,10 @@ export function useEmergency() {
   incidentRef.current = incident;
 
   useEffect(() => {
-    const sync = () => setIncident(readIncident());
+    const sync = () => {
+      setIncident(readIncident());
+      setLoading(false);
+    };
     sync();
     window.addEventListener(INCIDENT_EVENT, sync);
     window.addEventListener("storage", sync);
