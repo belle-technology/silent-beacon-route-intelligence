@@ -9,13 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as MapRouteImport } from './routes/map'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as EmergencyRouteImport } from './routes/emergency'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactsRouteImport } from './routes/contacts'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -24,6 +32,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const MapRoute = MapRouteImport.update({
   id: '/map',
   path: '/map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmergencyRoute = EmergencyRouteImport.update({
@@ -41,6 +54,11 @@ const ContactsRoute = ContactsRouteImport.update({
   path: '/contacts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -49,61 +67,95 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/contacts': typeof ContactsRoute
   '/dashboard': typeof DashboardRoute
   '/emergency': typeof EmergencyRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/settings': typeof SettingsRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/contacts': typeof ContactsRoute
   '/dashboard': typeof DashboardRoute
   '/emergency': typeof EmergencyRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/settings': typeof SettingsRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/contacts': typeof ContactsRoute
   '/dashboard': typeof DashboardRoute
   '/emergency': typeof EmergencyRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/settings': typeof SettingsRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/auth'
     | '/contacts'
     | '/dashboard'
     | '/emergency'
+    | '/login'
     | '/map'
     | '/settings'
+    | '/signup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/contacts' | '/dashboard' | '/emergency' | '/map' | '/settings'
+  to:
+    | '/'
+    | '/auth'
+    | '/contacts'
+    | '/dashboard'
+    | '/emergency'
+    | '/login'
+    | '/map'
+    | '/settings'
+    | '/signup'
   id:
     | '__root__'
     | '/'
+    | '/auth'
     | '/contacts'
     | '/dashboard'
     | '/emergency'
+    | '/login'
     | '/map'
     | '/settings'
+    | '/signup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
   ContactsRoute: typeof ContactsRoute
   DashboardRoute: typeof DashboardRoute
   EmergencyRoute: typeof EmergencyRoute
+  LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   SettingsRoute: typeof SettingsRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -116,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/map'
       fullPath: '/map'
       preLoaderRoute: typeof MapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/emergency': {
@@ -139,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -151,11 +217,14 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
   ContactsRoute: ContactsRoute,
   DashboardRoute: DashboardRoute,
   EmergencyRoute: EmergencyRoute,
+  LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   SettingsRoute: SettingsRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
