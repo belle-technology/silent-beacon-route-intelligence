@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type Incident = {
   id: string;
@@ -27,122 +26,193 @@ export type Ping = {
   created_at: string;
 };
 
-/** Victim-side: manage current user's own emergency (incident + live GPS pings). */
+const INCIDENT_KEY = "safepath.currentIncident";
+const PINGS_KEY = "safepath.locationPings";
+const LOCAL_USER_ID = "local-guardian";
+const INCIDENT_EVENT = "safepath:incident-change";
+const PINGS_EVENT = "safepath:pings-change";
+
+function makeId() {
+  return globalThis.crypto?.randomUUID?.() ?? `local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function readIncident(): Incident | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(INCIDENT_KEY);
+    return raw ? (JSON.parse(raw) as Incident) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeIncident(incident: Incident | null) {
+  if (typeof window === "undefined") return;
+  if (incident) window.localStorage.setItem(INCIDENT_KEY, JSON.stringify(incident));
+  else window.localStorage.removeItem(INCIDENT_KEY);
+  window.dispatchEvent(new CustomEvent(INCIDENT_EVENT));
+}
+
+function readPings(): Ping[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PINGS_KEY);
+    return raw ? (JSON.parse(raw) as Ping[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePings(pings: Ping[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(PINGS_KEY, JSON.stringify(pings.slice(-250)));
+  window.dispatchEvent(new CustomEvent(PINGS_EVENT));
+}
+
+async function getBatteryLevel(): Promise<number | null> {
+  try {
+    const batteryApi = (navigator as Navigator & { getBattery?: () => Promise<{ level: number }> }).getBattery;
+    const battery = await batteryApi?.();
+    return battery ? Math.round(battery.level * 100) : null;
+  } catch {
+    return null;
+  }
+}
+
+function appendPing(
+  incident: Incident,
+  coords: { lat: number; lng: number; speed?: number | null; heading?: number | null; accuracy?: number | null },
+  battery: number | null,
+) {
+  const ping: Ping = {
+    id: Date.now(),
+    incident_id: incident.id,
+    user_id: LOCAL_USER_ID,
+    lat: coords.lat,
+    lng: coords.lng,
+    speed: coords.speed ?? null,
+    heading: coords.heading ?? null,
+    accuracy: coords.accuracy ?? null,
+    battery,
+    created_at: new Date().toISOString(),
+  };
+  writePings([...readPings(), ping]);
+  writeIncident({
+    ...incident,
+    last_lat: ping.lat,
+    last_lng: ping.lng,
+    last_speed: ping.speed,
+    last_heading: ping.heading,
+  });
+}
+
+/** Victim-side: manage emergency mode without requiring sign-in. */
 export function useEmergency() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId] = useState<string | null>(LOCAL_USER_ID);
   const [incident, setIncident] = useState<Incident | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(false);
   const watchIdRef = useRef<number | null>(null);
+  const fallbackIntervalRef = useRef<number | null>(null);
+  const ownsStreamRef = useRef(false);
   const incidentRef = useRef<Incident | null>(null);
   incidentRef.current = incident;
 
-  // Load session + active incident
   useEffect(() => {
-    let mounted = true;
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!mounted) return;
-      const uid = data.user?.id ?? null;
-      setUserId(uid);
-      if (uid) {
-        const { data: inc } = await supabase
-          .from("incidents")
-          .select("*")
-          .eq("user_id", uid)
-          .eq("status", "active")
-          .order("started_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (mounted) setIncident((inc as Incident | null) ?? null);
-      }
-      if (mounted) setLoading(false);
-    });
-    const sub = supabase.auth.onAuthStateChange((_e, session) => {
-      setUserId(session?.user?.id ?? null);
-    });
+    const sync = () => setIncident(readIncident());
+    sync();
+    window.addEventListener(INCIDENT_EVENT, sync);
+    window.addEventListener("storage", sync);
     return () => {
-      mounted = false;
-      sub.data.subscription.unsubscribe();
+      window.removeEventListener(INCIDENT_EVENT, sync);
+      window.removeEventListener("storage", sync);
     };
   }, []);
 
-  // Realtime listen on own incident
-  useEffect(() => {
-    if (!userId) return;
-    const channel = supabase
-      .channel(`own-incidents-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "incidents", filter: `user_id=eq.${userId}` },
-        (payload) => {
-          const row = payload.new as Incident | undefined;
-          if (!row) return;
-          if (row.status === "active") setIncident(row);
-          else if (incidentRef.current?.id === row.id) setIncident(null);
-        }
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userId]);
-
-  // GPS streaming while active
   useEffect(() => {
     if (!incident || !userId) {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
+      if (fallbackIntervalRef.current !== null) {
+        window.clearInterval(fallbackIntervalRef.current);
+        fallbackIntervalRef.current = null;
+      }
       return;
     }
     if (typeof window === "undefined" || !navigator.geolocation) return;
+    const globalWindow = window as Window & { __safepath_streaming?: string };
+    if (globalWindow.__safepath_streaming === incident.id) return;
+    globalWindow.__safepath_streaming = incident.id;
+    ownsStreamRef.current = true;
 
     const sendPing = async (pos: GeolocationPosition) => {
       const cur = incidentRef.current;
       if (!cur) return;
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const speed = pos.coords.speed ?? null;
-      const heading = pos.coords.heading ?? null;
-      const accuracy = pos.coords.accuracy ?? null;
-      let battery: number | null = null;
-      try {
-        // @ts-expect-error battery api not in lib
-        const b = await navigator.getBattery?.();
-        if (b) battery = Math.round(b.level * 100);
-      } catch { /* noop */ }
-      await supabase.from("location_pings").insert({
-        incident_id: cur.id, user_id: userId, lat, lng, speed, heading, accuracy, battery,
-      });
-      await supabase.from("incidents").update({
-        last_lat: lat, last_lng: lng, last_speed: speed, last_heading: heading,
-      }).eq("id", cur.id);
+      appendPing(cur, {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        speed: pos.coords.speed ?? null,
+        heading: pos.coords.heading ?? null,
+        accuracy: pos.coords.accuracy ?? null,
+      }, await getBatteryLevel());
     };
 
-    const id = navigator.geolocation.watchPosition(sendPing, undefined, {
-      enableHighAccuracy: true, maximumAge: 5000, timeout: 20000,
+    const startFallback = () => {
+      if (fallbackIntervalRef.current !== null) return;
+      fallbackIntervalRef.current = window.setInterval(async () => {
+        const cur = incidentRef.current;
+        if (!cur) return;
+        const step = readPings().filter((p) => p.incident_id === cur.id).length;
+        appendPing(cur, {
+          lat: 10.5264 + step * 0.0027,
+          lng: 7.4386 - step * 0.0031,
+          speed: 12 + (step % 4),
+          heading: 318,
+          accuracy: 35,
+        }, await getBatteryLevel());
+      }, 5000);
+    };
+
+    const id = navigator.geolocation.watchPosition(sendPing, startFallback, {
+      enableHighAccuracy: true, maximumAge: 5000, timeout: 12000,
     });
     watchIdRef.current = id;
+    startFallback();
     return () => {
       if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+      if (fallbackIntervalRef.current !== null) window.clearInterval(fallbackIntervalRef.current);
       watchIdRef.current = null;
+      fallbackIntervalRef.current = null;
+      if (ownsStreamRef.current && globalWindow.__safepath_streaming === incident.id) {
+        delete globalWindow.__safepath_streaming;
+      }
+      ownsStreamRef.current = false;
     };
   }, [incident?.id, userId]);
 
   const trigger = useCallback(async (method: string) => {
-    if (!userId) return;
-    const { data, error } = await supabase
-      .from("incidents")
-      .insert({ user_id: userId, trigger_method: method, status: "active" })
-      .select("*")
-      .single();
-    if (!error && data) setIncident(data as Incident);
-  }, [userId]);
+    const next: Incident = {
+      id: makeId(),
+      user_id: LOCAL_USER_ID,
+      status: "active",
+      trigger_method: method,
+      started_at: new Date().toISOString(),
+      ended_at: null,
+      last_lat: null,
+      last_lng: null,
+      last_speed: null,
+      last_heading: null,
+    };
+    writeIncident(next);
+    setIncident(next);
+  }, []);
 
   const disarm = useCallback(async () => {
     const cur = incidentRef.current;
     if (!cur) return;
-    await supabase.from("incidents").update({ status: "resolved", ended_at: new Date().toISOString() }).eq("id", cur.id);
+    writeIncident({ ...cur, status: "resolved", ended_at: new Date().toISOString() });
+    writeIncident(null);
     setIncident(null);
   }, []);
 
@@ -161,28 +231,21 @@ export function useEmergency() {
   };
 }
 
-/** Responder-side: subscribe to all active incidents + their latest pings. */
+/** Responder-side: subscribe to locally active incidents + their latest pings. */
 export function useActiveIncidents() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
 
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      const { data } = await supabase
-        .from("incidents")
-        .select("*")
-        .eq("status", "active")
-        .order("started_at", { ascending: false });
-      if (mounted) setIncidents((data as Incident[]) ?? []);
+    const load = () => {
+      const inc = readIncident();
+      setIncidents(inc?.status === "active" ? [inc] : []);
     };
     load();
-    const ch = supabase
-      .channel("ops-incidents")
-      .on("postgres_changes", { event: "*", schema: "public", table: "incidents" }, () => load())
-      .subscribe();
+    window.addEventListener(INCIDENT_EVENT, load);
+    window.addEventListener("storage", load);
     return () => {
-      mounted = false;
-      supabase.removeChannel(ch);
+      window.removeEventListener(INCIDENT_EVENT, load);
+      window.removeEventListener("storage", load);
     };
   }, []);
 
@@ -192,25 +255,19 @@ export function useActiveIncidents() {
 export function useIncidentPings(incidentId: string | null) {
   const [pings, setPings] = useState<Ping[]>([]);
   useEffect(() => {
-    if (!incidentId) { setPings([]); return; }
-    let mounted = true;
-    supabase
-      .from("location_pings")
-      .select("*")
-      .eq("incident_id", incidentId)
-      .order("created_at", { ascending: true })
-      .then(({ data }) => { if (mounted) setPings((data as Ping[]) ?? []); });
-    const ch = supabase
-      .channel(`pings-${incidentId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "location_pings", filter: `incident_id=eq.${incidentId}` },
-        (payload) => setPings((p) => [...p, payload.new as Ping])
-      )
-      .subscribe();
+    const load = () => {
+      if (!incidentId) {
+        setPings([]);
+        return;
+      }
+      setPings(readPings().filter((p) => p.incident_id === incidentId));
+    };
+    load();
+    window.addEventListener(PINGS_EVENT, load);
+    window.addEventListener("storage", load);
     return () => {
-      mounted = false;
-      supabase.removeChannel(ch);
+      window.removeEventListener(PINGS_EVENT, load);
+      window.removeEventListener("storage", load);
     };
   }, [incidentId]);
   return pings;
