@@ -4,7 +4,7 @@ import { MobileShell } from "@/components/MobileShell";
 import { useEmergency } from "@/lib/safepath-state";
 import { ChevronRight, Timer, EyeOff, Activity, Zap } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/")({
+export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "SafePath AI — Guardian standby" },

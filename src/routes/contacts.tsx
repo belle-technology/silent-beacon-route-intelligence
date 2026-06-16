@@ -2,9 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { MobileShell } from "@/components/MobileShell";
 import { Plus, Phone, MessageSquare, Shield, Trash2, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/_authenticated/contacts")({
+export const Route = createFileRoute("/contacts")({
   head: () => ({
     meta: [
       { title: "SafePath AI — Trusted contacts" },
@@ -23,26 +22,39 @@ type Contact = {
   priority: number;
 };
 
+const CONTACTS_KEY = "safepath.trustedContacts";
+
+function readContacts(): Contact[] {
+  try {
+    const raw = window.localStorage.getItem(CONTACTS_KEY);
+    return raw ? (JSON.parse(raw) as Contact[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeContacts(contacts: Contact[]) {
+  window.localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
+}
+
 function Contacts() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [adding, setAdding] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function load() {
-    const { data } = await supabase
-      .from("emergency_contacts")
-      .select("*")
-      .order("priority", { ascending: true })
-      .order("created_at", { ascending: true });
-    setContacts((data as Contact[]) ?? []);
+    setContacts(readContacts().sort((a, b) => a.priority - b.priority));
     setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
 
   async function remove(id: string) {
-    await supabase.from("emergency_contacts").delete().eq("id", id);
-    setContacts((cs) => cs.filter((c) => c.id !== id));
+    setContacts((cs) => {
+      const next = cs.filter((c) => c.id !== id);
+      writeContacts(next);
+      return next;
+    });
   }
 
   return (
@@ -120,15 +132,17 @@ function AddDialog({ onClose, onAdded }: { onClose: () => void; onAdded: (c: Con
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setErr(null);
-    const { data: u } = await supabase.auth.getUser();
-    if (!u.user) { setErr("Not signed in"); setBusy(false); return; }
-    const { data, error } = await supabase
-      .from("emergency_contacts")
-      .insert({ user_id: u.user.id, name, relation, phone, priority })
-      .select("*").single();
+    const contact: Contact = {
+      id: crypto.randomUUID?.() ?? `contact-${Date.now()}`,
+      user_id: "local-guardian",
+      name,
+      relation,
+      phone,
+      priority,
+    };
+    writeContacts([...readContacts(), contact]);
     setBusy(false);
-    if (error) { setErr(error.message); return; }
-    onAdded(data as Contact);
+    onAdded(contact);
   }
 
   return (

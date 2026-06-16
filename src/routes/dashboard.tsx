@@ -4,7 +4,7 @@ import { TacticalMap } from "@/components/TacticalMap";
 import { formatElapsed, useActiveIncidents, useIncidentPings, type Incident } from "@/lib/safepath-state";
 import { AlertOctagon, Radio, ShieldAlert, Wifi, Activity, ArrowLeft, Users } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/dashboard")({
+export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "SafePath AI — Operations dashboard" },
