@@ -4,7 +4,7 @@ import { MobileShell } from "@/components/MobileShell";
 import { Plus, Phone, MessageSquare, Shield, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/_authenticated/contacts")({
+export const Route = createFileRoute("/contacts")({
   head: () => ({
     meta: [
       { title: "SafePath AI — Trusted contacts" },

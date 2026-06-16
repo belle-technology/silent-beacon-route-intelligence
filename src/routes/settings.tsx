@@ -4,7 +4,7 @@ import { MobileShell } from "@/components/MobileShell";
 import { ChevronRight, Vibrate, KeyRound, Volume2, EyeOff, Heart, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/_authenticated/settings")({
+export const Route = createFileRoute("/settings")({
   head: () => ({
     meta: [
       { title: "SafePath AI — Settings" },
